@@ -325,6 +325,7 @@ libsbi_openapi_sources = files('''
     model/ellipsoid_arc_all_of.c
     model/ellipsoid_arc.c
     model/emergency_info.c
+    model/enable_ue_reachability_rsp_data.c
     model/enhanced_coverage_restriction_data.c
     model/eps_bearer_info.c
     model/eps_interworking_indication.c

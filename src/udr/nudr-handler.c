@@ -336,6 +336,63 @@ bool udr_nudr_dr_handle_subscription_context(
         END
         break;
 
+    CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+        SWITCH(recvmsg->h.method)
+        CASE(OGS_SBI_HTTP_METHOD_PUT)
+            OpenAPI_smsf_registration_t *SmsfRegistration;
+
+            SmsfRegistration = recvmsg->SmsfRegistration;
+            if (!SmsfRegistration) {
+                ogs_error("[%s] No SmsfRegistration", supi);
+                ogs_assert(true ==
+                    ogs_sbi_server_send_error(
+                        stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                        recvmsg, "No SmsfRegistration", supi));
+                return false;
+            }
+
+            memset(&sendmsg, 0, sizeof(sendmsg));
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+            return true;
+
+        CASE(OGS_SBI_HTTP_METHOD_PATCH)
+            OpenAPI_list_t *PatchItemList;
+
+            PatchItemList = recvmsg->PatchItemList;
+            if (!PatchItemList) {
+                ogs_error("[%s] No PatchItemList", supi);
+                ogs_assert(true ==
+                    ogs_sbi_server_send_error(
+                        stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                        recvmsg, "No PatchItemList", supi));
+                return false;
+            }
+
+            /* TODO: parse PatchItemList */
+
+            memset(&sendmsg, 0, sizeof(sendmsg));
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+            return true;
+
+        DEFAULT
+            ogs_error("Invalid HTTP method [%s]", recvmsg->h.method);
+            ogs_assert(true ==
+                ogs_sbi_server_send_error(stream,
+                    OGS_SBI_HTTP_STATUS_MEHTOD_NOT_ALLOWED,
+                    recvmsg, "Invalid HTTP method", recvmsg->h.method));
+        END
+        break;
+
     DEFAULT
         ogs_error("Invalid resource name [%s]",
                 recvmsg->h.resource.component[3]);
@@ -957,6 +1014,26 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
 
         OpenAPI_list_free(dnnConfigurationList);
+
+        break;
+
+    CASE(OGS_SBI_RESOURCE_NAME_SMS_MNG_DATA)
+        memset(&sendmsg, 0, sizeof(sendmsg));
+        sendmsg.SmsManagementSubscription = OpenAPI_sms_management_subscription_data_create(
+                NULL,
+                true, 1,
+                false, 0,
+                false, 0,
+                true, 1,
+                false, 0,
+                false, 0,
+                NULL, NULL);
+
+        response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+        ogs_assert(response);
+        ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+        OpenAPI_sms_management_subscription_data_free(sendmsg.SmsManagementSubscription);
 
         break;
 

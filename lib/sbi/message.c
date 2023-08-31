@@ -187,6 +187,10 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_sec_negotiate_req_data_free(message->SecNegotiateReqData);
     if (message->SecNegotiateRspData)
         OpenAPI_sec_negotiate_rsp_data_free(message->SecNegotiateRspData);
+    if (message->SmsfRegistration)
+        OpenAPI_smsf_registration_free(message->SmsfRegistration);
+    if (message->SmsManagementSubscription)
+        OpenAPI_sms_management_subscription_data_free(message->SmsManagementSubscription);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1173,6 +1177,10 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_n1_n2_msg_txfr_failure_notification_convertToJSON(
                 message->N1N2MsgTxfrFailureNotification);
         ogs_assert(item);
+    } else if (message->EnableUeReachabilityReqData) {
+        item = OpenAPI_enable_ue_reachability_rsp_data_convertToJSON(
+                message->EnableUeReachabilityReqData);
+        ogs_assert(item);
     } else if (message->SmContextStatusNotification) {
         item = OpenAPI_sm_context_status_notification_convertToJSON(
                 message->SmContextStatusNotification);
@@ -1245,6 +1253,14 @@ static char *build_json(ogs_sbi_message_t *message)
     } else if (message->SecNegotiateRspData) {
         item = OpenAPI_sec_negotiate_rsp_data_convertToJSON(
             message->SecNegotiateRspData);
+        ogs_assert(item);
+    } else if (message->SmsfRegistration) {
+        item = OpenAPI_smsf_registration_convertToJSON(
+            message->SmsfRegistration);
+        ogs_assert(item);
+    } else if (message->SmsManagementSubscription) {
+        item = OpenAPI_sms_management_subscription_data_convertToJSON(
+                message->SmsManagementSubscription);
         ogs_assert(item);
     }
 
@@ -1520,6 +1536,50 @@ static int parse_json(ogs_sbi_message_t *message,
                         ogs_error("Unknown method [%s]", message->h.method);
                     END
                     break;
+                CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+
+                    SWITCH(message->h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_PUT)
+                        if (message->res_status < 300) {
+                            message->SmsfRegistration =
+                                OpenAPI_smsf_registration_parseFromJSON(
+                                        item);
+                            if (!message->SmsfRegistration) {
+                                rv = OGS_ERROR;
+                                ogs_error("JSON parse error");
+                            }
+                        } else {
+                            ogs_error("HTTP ERROR Status : %d",
+                                    message->res_status);
+                        }
+                        break;
+                    DEFAULT
+                        rv = OGS_ERROR;
+                        ogs_error("Unknown method [%s]", message->h.method);
+                    END
+                    break;
+                CASE(OGS_SBI_RESOURCE_NAME_SMS_MNG_DATA)
+
+                    SWITCH(message->h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_PUT)
+                        if (message->res_status < 300) {
+                            message->SmsfRegistration =
+                                OpenAPI_smsf_registration_parseFromJSON(
+                                        item);
+                            if (!message->SmsfRegistration) {
+                                rv = OGS_ERROR;
+                                ogs_error("JSON parse error");
+                            }
+                        } else {
+                            ogs_error("HTTP ERROR Status : %d",
+                                    message->res_status);
+                        }
+                        break;
+                    DEFAULT
+                        rv = OGS_ERROR;
+                        ogs_error("Unknown method [%s]", message->h.method);
+                    END
+                    break;
                 DEFAULT
                     rv = OGS_ERROR;
                     ogs_error("Unknown resource name [%s]",
@@ -1658,18 +1718,42 @@ static int parse_json(ogs_sbi_message_t *message,
                     break;
 
                 CASE(OGS_SBI_RESOURCE_NAME_CONTEXT_DATA)
-                    if (message->res_status < 300) {
-                        message->Amf3GppAccessRegistration =
-                            OpenAPI_amf3_gpp_access_registration_parseFromJSON(
-                                    item);
-                        if (!message->Amf3GppAccessRegistration) {
-                            rv = OGS_ERROR;
-                            ogs_error("JSON parse error");
+                    SWITCH(message->h.resource.component[3])
+                    CASE(OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS)
+                        if (message->res_status < 300) {
+                            message->Amf3GppAccessRegistration =
+                                OpenAPI_amf3_gpp_access_registration_parseFromJSON(
+                                        item);
+                            if (!message->Amf3GppAccessRegistration) {
+                                rv = OGS_ERROR;
+                                ogs_error("JSON parse error");
+                            }
+                        } else {
+                            ogs_error("HTTP ERROR Status : %d",
+                                    message->res_status);
                         }
-                    } else {
-                        ogs_error("HTTP ERROR Status : %d",
-                                message->res_status);
-                    }
+                        break;
+
+                    CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+                        if (message->res_status < 300) {
+                            message->SmsfRegistration =
+                                    OpenAPI_smsf_registration_parseFromJSON(
+                                        item);
+                            if (!message->SmsfRegistration) {
+                                rv = OGS_ERROR;
+                                ogs_error("JSON parse error");
+                            }
+                        } else {
+                            ogs_error("HTTP ERROR Status : %d",
+                                    message->res_status);
+                        }
+                        break;
+
+                    DEFAULT
+                        rv = OGS_ERROR;
+                        ogs_error("Unknown resource name [%s]",
+                                  message->h.resource.component[4]);
+                    END
                     break;
 
                 DEFAULT
@@ -1740,6 +1824,21 @@ static int parse_json(ogs_sbi_message_t *message,
                             } else {
                                 ogs_error("HTTP ERROR Status : %d",
                                         message->res_status);
+                            }
+                            break;
+
+                        CASE(OGS_SBI_RESOURCE_NAME_SMS_MNG_DATA)
+                            if (message->res_status < 300) {
+                                message->SmsManagementSubscription =
+                                        OpenAPI_sms_management_subscription_data_parseFromJSON(
+                                                item);
+                                if (!message->SmsManagementSubscription) {
+                                    rv = OGS_ERROR;
+                                    ogs_error("JSON parse error");
+                                }
+                            } else {
+                                ogs_error("HTTP ERROR Status : %d",
+                                          message->res_status);
                             }
                             break;
 

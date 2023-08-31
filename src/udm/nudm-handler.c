@@ -245,7 +245,7 @@ bool udm_nudm_ueau_handle_result_confirmation_inform(
     return true;
 }
 
-bool udm_nudm_uecm_handle_registration(
+bool udm_nudm_uecm_handle_amf_registration(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
 {
     OpenAPI_amf3_gpp_access_registration_t *Amf3GppAccessRegistration = NULL;
@@ -345,7 +345,7 @@ bool udm_nudm_uecm_handle_registration(
     return true;
 }
 
-bool udm_nudm_uecm_handle_registration_update(
+bool udm_nudm_uecm_handle_amf_registration_update(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
 {
     OpenAPI_amf3_gpp_access_registration_modification_t
@@ -449,6 +449,38 @@ bool udm_nudm_uecm_handle_registration_update(
     r = udm_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
             udm_nudr_dr_build_patch_amf_context,
             udm_ue, stream, PatchItemList);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
+
+    return true;
+}
+
+bool udm_nudm_uecm_handle_smsf_registration(
+    udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
+{
+    OpenAPI_smsf_registration_t *SmsfRegistration = NULL;
+    int r;
+
+    ogs_assert(udm_ue);
+    ogs_assert(stream);
+    ogs_assert(message);
+
+    SmsfRegistration = message->SmsfRegistration;
+    if (!SmsfRegistration) {
+        ogs_error("[%s] No SmsfRegistration", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No SmsfRegistration", udm_ue->supi));
+        return false;
+    }
+
+    udm_ue->smsf_registration =
+        OpenAPI_smsf_registration_copy(
+            udm_ue->smsf_registration,
+                message->SmsfRegistration);
+
+    r = udm_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
+            udm_nudr_dr_build_update_smsf_context, udm_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 

@@ -31,9 +31,12 @@ bool udm_nudm_ueau_handle_get(
 bool udm_nudm_ueau_handle_result_confirmation_inform(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
 
-bool udm_nudm_uecm_handle_registration(
+bool udm_nudm_uecm_handle_amf_registration(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
-bool udm_nudm_uecm_handle_registration_update(
+bool udm_nudm_uecm_handle_amf_registration_update(
+    udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
+
+bool udm_nudm_uecm_handle_smsf_registration(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
 
 bool udm_nudm_sdm_handle_subscription_provisioned(

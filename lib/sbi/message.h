@@ -92,6 +92,8 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_AM_DATA               "am-data"
 #define OGS_SBI_RESOURCE_NAME_SM_DATA               "sm-data"
 #define OGS_SBI_RESOURCE_NAME_SMF_SELECT_DATA       "smf-select-data"
+#define OGS_SBI_RESOURCE_NAME_SMS_DATA              "sms-data"
+#define OGS_SBI_RESOURCE_NAME_SMS_MNG_DATA          "sms-mng-data"
 #define OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA "ue-context-in-smf-data"
 #define OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA \
                                             "smf-selection-subscription-data"
@@ -102,6 +104,7 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_AUTH_EVENTS           "auth-events"
 #define OGS_SBI_RESOURCE_NAME_REGISTRATIONS         "registrations"
 #define OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS       "amf-3gpp-access"
+#define OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS      "smsf-3gpp-access"
 
 #define OGS_SBI_RESOURCE_NAME_SUBSCRIPTION_DATA     "subscription-data"
 #define OGS_SBI_RESOURCE_NAME_AUTHENTICATION_DATA   "authentication-data"
@@ -123,6 +126,7 @@ extern "C" {
 
 #define OGS_SBI_RESOURCE_NAME_UE_CONTEXTS           "ue-contexts"
 #define OGS_SBI_RESOURCE_NAME_N1_N2_MESSAGES        "n1-n2-messages"
+#define OGS_SBI_RESOURCE_NAME_UE_REACHIND           "ue-reachind"
 
 #define OGS_SBI_RESOURCE_NAME_SM_CONTEXT_STATUS     "sm-context-status"
 #define OGS_SBI_RESOURCE_NAME_AM_POLICY_NOTIFY      "am-policy-notify"
@@ -506,6 +510,7 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_n1_n2_message_transfer_rsp_data_t *N1N2MessageTransferRspData;
     OpenAPI_n1_n2_msg_txfr_failure_notification_t
         *N1N2MsgTxfrFailureNotification;
+    OpenAPI_enable_ue_reachability_rsp_data_t *EnableUeReachabilityReqData;
     OpenAPI_sm_context_status_notification_t *SmContextStatusNotification;
     OpenAPI_policy_association_request_t *PolicyAssociationRequest;
     OpenAPI_policy_association_t *PolicyAssociation;
@@ -527,6 +532,8 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_modification_notification_t *ModificationNotification;
     OpenAPI_sec_negotiate_req_data_t *SecNegotiateReqData;
     OpenAPI_sec_negotiate_rsp_data_t *SecNegotiateRspData;
+    OpenAPI_smsf_registration_t *SmsfRegistration;
+    OpenAPI_sms_management_subscription_data_t *SmsManagementSubscription;
 
     ogs_sbi_links_t *links;
 

@@ -998,3 +998,32 @@ cleanup:
 
     return OGS_OK;
 }
+
+int amf_namf_mt_handle_ue_reachind(
+        ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg) {
+
+    int status = OGS_SBI_HTTP_STATUS_OK;
+
+    ogs_assert(stream);
+    ogs_assert(recvmsg);
+
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_response_t *response = NULL;
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+
+    status = OGS_SBI_HTTP_STATUS_OK;
+
+    OpenAPI_enable_ue_reachability_rsp_data_t EnableUeReachabilityReqData;
+    memset(&EnableUeReachabilityReqData, 0, sizeof(EnableUeReachabilityReqData));
+    EnableUeReachabilityReqData.reachability = ogs_strdup("REACHABLE");
+
+    sendmsg.EnableUeReachabilityReqData = &EnableUeReachabilityReqData;
+
+    response = ogs_sbi_build_response(&sendmsg, status);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+    ogs_free(EnableUeReachabilityReqData.reachability);
+
+    return OGS_OK;
+}
