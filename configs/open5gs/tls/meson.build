@@ -32,6 +32,7 @@ tls_security = '''
     pcrf.key
     scp.key
     smf.key
+    smsf.key
     udm.key
     udr.key
     amf.crt
@@ -45,6 +46,7 @@ tls_security = '''
     pcrf.crt
     scp.crt
     smf.crt
+    smsf.crt
     udm.crt
     udr.crt
     sepp1.key

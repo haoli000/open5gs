@@ -132,6 +132,32 @@ void amf_nnrf_handle_nf_discover(
                 }
             }
 
+            /*
+             * If SMSF is not available, continue registration
+             * without SMS over NAS service.
+             */
+            if (service_type == OGS_SBI_SERVICE_TYPE_NSMSF_SMS) {
+                ogs_warn("[%s] SMSF not available, "
+                        "continuing without SMS over NAS",
+                        amf_ue->supi);
+
+                ogs_sbi_xact_remove(xact);
+
+                ogs_assert(amf_ue->nas.message_type ==
+                        OGS_NAS_5GS_REGISTRATION_REQUEST);
+                CLEAR_AMF_UE_TIMER(amf_ue->t3550);
+                r = nas_5gs_send_registration_accept(amf_ue);
+                ogs_expect(r == OGS_OK);
+                ogs_assert(r != OGS_ERROR);
+
+                AMF_UE_CLEAR_N2_TRANSFER(
+                        amf_ue, pdu_session_resource_setup_request);
+
+                if (!amf_ue->next.m_tmsi)
+                    OGS_FSM_TRAN(&amf_ue->sm, &gmm_state_registered);
+                break;
+            }
+
             r = nas_5gs_send_gmm_reject_from_sbi(amf_ue,
                     OGS_SBI_HTTP_STATUS_GATEWAY_TIMEOUT);
             ogs_expect(r == OGS_OK);

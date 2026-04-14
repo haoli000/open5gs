@@ -405,6 +405,48 @@ bool udr_nudr_dr_handle_subscription_context(
                     NULL));
         END
         break;
+    CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+        SWITCH(recvmsg->h.method)
+        CASE(OGS_SBI_HTTP_METHOD_PUT)
+            OpenAPI_smsf_registration_t *SmsfRegistration;
+
+            SmsfRegistration = recvmsg->SmsfRegistration;
+            if (!SmsfRegistration) {
+                ogs_error("[%s] No SmsfRegistration", supi);
+                ogs_assert(true ==
+                    ogs_sbi_server_send_error(
+                        stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                        recvmsg, "No SmsfRegistration", supi, NULL));
+                return false;
+            }
+
+            memset(&sendmsg, 0, sizeof(sendmsg));
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+            return true;
+
+        CASE(OGS_SBI_HTTP_METHOD_DELETE)
+            memset(&sendmsg, 0, sizeof(sendmsg));
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+            return true;
+
+        DEFAULT
+            ogs_error("Invalid HTTP method [%s]", recvmsg->h.method);
+            ogs_assert(true ==
+                ogs_sbi_server_send_error(stream,
+                    OGS_SBI_HTTP_STATUS_METHOD_NOT_ALLOWED,
+                    recvmsg, "Invalid HTTP method", recvmsg->h.method, NULL));
+        END
+        break;
 
     DEFAULT
         ogs_error("Invalid resource name [%s]",
@@ -428,6 +470,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     bool processAmData = false;
     bool processSmfSel = false;
     bool processSmData = false;
+    bool processSmsManagementData = false;
+    bool processSmsData = false;
     bool returnProvisionedData = false;
 
     ogs_sbi_message_t sendmsg;
@@ -518,6 +562,12 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             break;
         CASE(OGS_SBI_RESOURCE_NAME_SM_DATA)
             processSmData = true;
+            break;
+        CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+            processSmsManagementData = true;
+            break;
+        CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+            processSmsData = true;
             break;
         DEFAULT
             strerror = ogs_msprintf("Invalid resource name [%s]",
@@ -1227,6 +1277,48 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_free(SessionManagementSubscriptionData);
         }
         OpenAPI_list_free(SessionManagementSubscriptionDataList);
+    }
+
+    /* Process SMS Management Subscription Data (stub) */
+    if (processSmsManagementData) {
+        OpenAPI_sms_management_subscription_data_t SmsManagementSubscriptionData;
+
+        memset(&SmsManagementSubscriptionData, 0,
+                sizeof(SmsManagementSubscriptionData));
+
+        SmsManagementSubscriptionData.is_mt_sms_subscribed = true;
+        SmsManagementSubscriptionData.mt_sms_subscribed = true;
+        SmsManagementSubscriptionData.is_mo_sms_subscribed = true;
+        SmsManagementSubscriptionData.mo_sms_subscribed = true;
+
+        memset(&sendmsg, 0, sizeof(sendmsg));
+        sendmsg.SmsManagementSubscriptionData = &SmsManagementSubscriptionData;
+
+        response = ogs_sbi_build_response(
+                &sendmsg, OGS_SBI_HTTP_STATUS_OK);
+        ogs_assert(response);
+        ogs_assert(true ==
+                ogs_sbi_server_send_response(stream, response));
+    }
+
+    /* Process SMS Subscription Data (stub) */
+    if (processSmsData) {
+        OpenAPI_sms_subscription_data_t SmsSubscriptionData;
+
+        memset(&SmsSubscriptionData, 0,
+                sizeof(SmsSubscriptionData));
+
+        SmsSubscriptionData.is_sms_subscribed = true;
+        SmsSubscriptionData.sms_subscribed = true;
+
+        memset(&sendmsg, 0, sizeof(sendmsg));
+        sendmsg.SmsSubscriptionData = &SmsSubscriptionData;
+
+        response = ogs_sbi_build_response(
+                &sendmsg, OGS_SBI_HTTP_STATUS_OK);
+        ogs_assert(response);
+        ogs_assert(true ==
+                ogs_sbi_server_send_response(stream, response));
     }
 
     ogs_subscription_data_free(&subscription_data);

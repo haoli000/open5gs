@@ -337,6 +337,9 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NNSSF_NSSELECTION)
             api_version = OGS_SBI_API_V2;
             break;
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
+            api_version = OGS_SBI_API_V2;
+            break;
         DEFAULT
             api_version = OGS_SBI_API_V1;
         END
@@ -488,6 +491,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
         CASE(OGS_SBI_SERVICE_NAME_NPCF_AM_POLICY_CONTROL)
         CASE(OGS_SBI_SERVICE_NAME_NAMF_COMM)
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
             sbi_xact_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
             ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID &&
                     sbi_xact_id <= OGS_MAX_POOL_ID);
@@ -860,6 +864,30 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                 } else if (amf_ue->nas.message_type ==
                         OGS_NAS_5GS_DEREGISTRATION_REQUEST_FROM_UE) {
                     ogs_error("T3522 expired");
+                    break;
+                }
+
+                /*
+                 * If SMSF discovery timed out, continue registration
+                 * without SMS over NAS service.
+                 */
+                if (service_type == OGS_SBI_SERVICE_TYPE_NSMSF_SMS) {
+                    ogs_warn("[%s] SMSF discovery timed out, "
+                            "continuing without SMS over NAS",
+                            amf_ue->supi);
+
+                    ogs_assert(amf_ue->nas.message_type ==
+                            OGS_NAS_5GS_REGISTRATION_REQUEST);
+                    CLEAR_AMF_UE_TIMER(amf_ue->t3550);
+                    r = nas_5gs_send_registration_accept(amf_ue);
+                    ogs_expect(r == OGS_OK);
+                    ogs_assert(r != OGS_ERROR);
+
+                    AMF_UE_CLEAR_N2_TRANSFER(
+                            amf_ue, pdu_session_resource_setup_request);
+
+                    if (!amf_ue->next.m_tmsi)
+                        OGS_FSM_TRAN(&amf_ue->sm, &gmm_state_registered);
                     break;
                 }
 
