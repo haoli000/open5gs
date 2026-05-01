@@ -31,6 +31,19 @@ int amf_nsmsf_sm_service_handle_activate(
 
     int r;
 
+    /*
+     * TS 29.540 6.1.3.2.1: Nsmsf_SMService Activate response
+     * - 201 Created: returns UeSmsContextData (new context)
+     * - 204 No Content: context updated (no body)
+     * Both are success cases.
+     */
+    if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_NO_CONTENT) {
+        ogs_info("[%s] SMSF SM Service activated (204 No Content)",
+                amf_ue->supi);
+        amf_ue->sm_service_activated = true;
+        return OGS_OK;
+    }
+
     UeSmsContextData = recvmsg->UeSmsContextData;
     if (!UeSmsContextData) {
         ogs_error("[%s] No UeSmsContextData", amf_ue->supi);
