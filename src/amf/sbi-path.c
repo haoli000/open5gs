@@ -660,6 +660,58 @@ void amf_sbi_send_deactivate_all_ue_in_gnb(amf_gnb_t *gnb, int state)
             if (old_xact_count == new_xact_count) {
                 amf_ue_deassociate_ran_ue(amf_ue, ran_ue);
                 ran_ue_remove(ran_ue);
+
+                /*
+                 * When the gNB SCTP connection is permanently lost
+                 * (LO_CONNREFUSED) or the gNB is being reset
+                 * (RESET_ALL), the UE is unreachable via the only NG
+                 * path it had. Keeping the amf_ue context around for
+                 * the mobile_reachable timer (T3512 + 240s, often 10+
+                 * minutes) wastes memory under load -- the AMF can
+                 * accumulate hundreds of MB of dead UE state.
+                 *
+                 * Immediately remove the amf_ue when:
+                 *  - gNB is gone (LO_CONNREFUSED / RESET_ALL)
+                 *  - No pending SMF session transactions
+                 *  - No pending generic SBI transactions (UDM/AUSF/SMSF
+                 *    etc) -- responses from those would crash if the
+                 *    amf_ue is gone
+                 *  - No holding NG context (no in-flight handover)
+                 *
+                 * If any condition is not met, fall back to the standard
+                 * mobile_reachable timer behavior.
+                 *
+                 * If the UE returns later, it will re-register and
+                 * the AMF will rebuild context -- the same as if the
+                 * mobile_reachable timer had expired.
+                 */
+                if ((state == AMF_REMOVE_S1_CONTEXT_BY_LO_CONNREFUSED ||
+                     state == AMF_REMOVE_S1_CONTEXT_BY_RESET_ALL) &&
+                    amf_ue->ran_ue_holding_id == OGS_INVALID_POOL_ID) {
+                    if (ogs_list_count(&amf_ue->sbi.xact_list) == 0) {
+                        ogs_debug("[%s] gNB lost, removing amf_ue immediately",
+                                amf_ue->suci ? amf_ue->suci : "unknown");
+                        amf_ue_remove(amf_ue);
+                    } else {
+                        /*
+                         * SBI transactions are still in flight (e.g.
+                         * sendsms response from SMSF, or N1N2 from
+                         * SMSF for MT). Don't remove now -- the
+                         * response handler would crash.
+                         *
+                         * Instead, schedule a short mobile_reachable
+                         * timer so the UE is freed soon after the
+                         * outstanding xacts settle, rather than
+                         * waiting the full T3512+240 (~13 min).
+                         */
+                        ogs_debug("[%s] gNB lost with %d pending xact(s), "
+                                "scheduling fast cleanup",
+                                amf_ue->suci ? amf_ue->suci : "unknown",
+                                ogs_list_count(&amf_ue->sbi.xact_list));
+                        ogs_timer_start(amf_ue->mobile_reachable.timer,
+                                ogs_time_from_sec(30));
+                    }
+                }
             }
         } else {
             ogs_warn("amf_sbi_send_deactivate_all_ue_in_gnb()");

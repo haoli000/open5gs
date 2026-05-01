@@ -214,6 +214,33 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
             AMF_UE_CLEAR_5GSM_MESSAGE(amf_ue);
             CLEAR_AMF_UE_TIMER(amf_ue->t3513);
 
+            /*
+             * If the UE has no NG context (NAS connection released)
+             * and no pending SBI transactions, fast-track the
+             * implicit_deregistration to fire in 1 second instead of
+             * waiting another T3512+240s (~13 min). The
+             * implicit_deregistration handler runs proper SBI cleanup
+             * flows asynchronously and ultimately removes the amf_ue.
+             * This keeps memory bounded under load.
+             *
+             * Note: we cannot remove amf_ue directly here -- doing so
+             * frees the FSM that ogs_fsm_dispatch is still iterating
+             * over, causing a 'newstate' assertion crash. Likewise
+             * OGS_FSM_TRAN to ue_context_will_remove is unsafe because
+             * its ENTRY_SIG handler frees the FSM during the same
+             * dispatch.
+             */
+            if (amf_ue->ran_ue_id == OGS_INVALID_POOL_ID &&
+                amf_ue->ran_ue_holding_id == OGS_INVALID_POOL_ID &&
+                ogs_list_count(&amf_ue->sbi.xact_list) == 0) {
+                ogs_debug("[%s] mobile_reachable expired with no NG/SBI, "
+                        "fast-tracking implicit_deregistration",
+                        amf_ue->supi ? amf_ue->supi : "?");
+                ogs_timer_start(amf_ue->implicit_deregistration.timer,
+                        ogs_time_from_sec(1));
+                break;
+            }
+
             ogs_timer_start(amf_ue->implicit_deregistration.timer,
                     ogs_time_from_sec(amf_self()->time.t3512.value + 240));
             break;
@@ -1151,6 +1178,33 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                     amf_ue, pdu_session_resource_setup_request);
             AMF_UE_CLEAR_5GSM_MESSAGE(amf_ue);
             CLEAR_AMF_UE_TIMER(amf_ue->t3513);
+
+            /*
+             * If the UE has no NG context (NAS connection released)
+             * and no pending SBI transactions, fast-track the
+             * implicit_deregistration to fire in 1 second instead of
+             * waiting another T3512+240s (~13 min). The
+             * implicit_deregistration handler runs proper SBI cleanup
+             * flows asynchronously and ultimately removes the amf_ue.
+             * This keeps memory bounded under load.
+             *
+             * Note: we cannot remove amf_ue directly here -- doing so
+             * frees the FSM that ogs_fsm_dispatch is still iterating
+             * over, causing a 'newstate' assertion crash. Likewise
+             * OGS_FSM_TRAN to ue_context_will_remove is unsafe because
+             * its ENTRY_SIG handler frees the FSM during the same
+             * dispatch.
+             */
+            if (amf_ue->ran_ue_id == OGS_INVALID_POOL_ID &&
+                amf_ue->ran_ue_holding_id == OGS_INVALID_POOL_ID &&
+                ogs_list_count(&amf_ue->sbi.xact_list) == 0) {
+                ogs_debug("[%s] mobile_reachable expired with no NG/SBI, "
+                        "fast-tracking implicit_deregistration",
+                        amf_ue->supi ? amf_ue->supi : "?");
+                ogs_timer_start(amf_ue->implicit_deregistration.timer,
+                        ogs_time_from_sec(1));
+                break;
+            }
 
             ogs_timer_start(amf_ue->implicit_deregistration.timer,
                     ogs_time_from_sec(amf_self()->time.t3512.value + 240));

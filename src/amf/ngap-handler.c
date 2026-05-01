@@ -1894,12 +1894,38 @@ void ngap_handle_ue_context_release_action(ran_ue_t *ran_ue)
          */
         if (amf_ue) {
             amf_ue_deassociate_ran_ue(amf_ue, ran_ue);
+            /*
+             * Standard 3GPP behavior keeps amf_ue alive for the
+             * mobile_reachable timer (T3512 + 240s, often 13+ min)
+             * so future MT delivery via paging can find the UE.
+             *
+             * Under load (~12 MiB per amf_ue) this OOMs the AMF.
+             * Use a much shorter timer here -- it's still long
+             * enough to catch a quick UE re-attach, but lets the
+             * AMF reclaim memory in seconds instead of minutes.
+             * If the UE returns later it simply re-registers.
+             */
             ogs_timer_start(amf_ue->mobile_reachable.timer,
-                    ogs_time_from_sec(amf_self()->time.t3512.value + 240));
+                    ogs_time_from_sec(30));
         } else
             ogs_error("No UE(amf-ue) Context");
 
         ran_ue_remove(ran_ue);
+
+        /*
+         * If there are no pending SBI transactions for this UE we
+         * can remove amf_ue immediately. Otherwise let the short
+         * mobile_reachable timer above handle it once the in-flight
+         * xacts settle.
+         */
+        if (amf_ue &&
+            ogs_list_count(&amf_ue->sbi.xact_list) == 0 &&
+            amf_ue->ran_ue_id == OGS_INVALID_POOL_ID &&
+            amf_ue->ran_ue_holding_id == OGS_INVALID_POOL_ID) {
+            ogs_debug("[%s] NAS released, removing amf_ue immediately",
+                    amf_ue->suci ? amf_ue->suci : "unknown");
+            amf_ue_remove(amf_ue);
+        }
         break;
 
     case NGAP_UE_CTX_REL_UE_CONTEXT_REMOVE:
