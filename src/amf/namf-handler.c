@@ -2025,3 +2025,72 @@ int amf_namf_comm_handle_registration_status_update_response(
 
     return OGS_OK;
 }
+
+/*
+ * Namf_MT EnableUeReachability handler
+ *
+ * PUT /namf-mt/v1/ue-contexts/{ueContextId}/ue-reachind
+ *
+ * Returns REACHABLE for any known UE (CM-CONNECTED or CM-IDLE).
+ * For CM-IDLE UEs, the subsequent N1N2MessageTransfer via namf-comm
+ * will trigger paging as needed.
+ */
+bool amf_namf_mt_handle_enable_ue_reachability(
+        ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message,
+        ogs_sbi_request_t *request)
+{
+    amf_ue_t *amf_ue = NULL;
+    char *ue_context_id = NULL;
+    cJSON *root = NULL;
+    char *response_body = NULL;
+    ogs_sbi_message_t response_message;
+    ogs_sbi_response_t *response = NULL;
+
+    ogs_assert(stream);
+    ogs_assert(message);
+
+    ue_context_id = message->h.resource.component[1];
+    if (!ue_context_id) {
+        ogs_error("[namf-mt] No ueContextId in request");
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream,
+                OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                NULL, "Missing ueContextId", NULL, NULL));
+        return false;
+    }
+
+    amf_ue = amf_ue_find_by_ue_context_id(ue_context_id);
+    if (!amf_ue) {
+        ogs_warn("[namf-mt] UE not found: %s", ue_context_id);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream,
+                OGS_SBI_HTTP_STATUS_NOT_FOUND,
+                NULL, "UE not found", ue_context_id, NULL));
+        return false;
+    }
+
+    ogs_info("[namf-mt] EnableUeReachability for [%s] CM=%s",
+            ue_context_id,
+            CM_CONNECTED(amf_ue) ? "CONNECTED" : "IDLE");
+
+    root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "reachability", "REACHABLE");
+
+    response_body = cJSON_PrintUnformatted(root);
+    ogs_assert(response_body);
+    cJSON_Delete(root);
+
+    memset(&response_message, 0, sizeof(response_message));
+    response_message.res_status = OGS_SBI_HTTP_STATUS_OK;
+
+    response = ogs_sbi_build_response(
+                    &response_message, OGS_SBI_HTTP_STATUS_OK);
+    ogs_assert(response);
+
+    response->http.content = response_body;
+    response->http.content_length = strlen(response_body);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+    return true;
+}

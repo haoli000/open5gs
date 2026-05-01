@@ -43,6 +43,11 @@ int amf_namf_comm_handle_registration_status_update_request(
 int amf_namf_comm_handle_registration_status_update_response(
         ogs_sbi_message_t *recvmsg, amf_ue_t *amf_ue);
 
+bool amf_namf_mt_handle_enable_ue_reachability(
+        ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message,
+        ogs_sbi_request_t *request);
+
 #ifdef __cplusplus
 }
 #endif
